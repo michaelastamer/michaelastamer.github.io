@@ -160,7 +160,7 @@ Train the data.
 # You need a different method like, "rf" for random forest, and the
 # tuning parameters will change.
 train_ctrl = trainControl(method = "repeatedcv", number = 10, repeats = 20)
-tree = train(overall_pick ~ .,
+tree = caret::train(overall_pick ~ .,
              data = select(training, -id, -year, -rank, -player),
              method = "rpart",
              trControl = train_ctrl,
@@ -170,7 +170,7 @@ plot(tree)
 ```
 
 ```{r}
-lm1 = train(draft ~ .,
+lm1 = caret::train(overall_pick ~ .,
             data = training,
             method = "lm",
             trControl = trainControl(method="cv", number = 10))
@@ -181,27 +181,7 @@ lm1
 summary(lm1)
 ```
 
-We can then look into predictions, and test how accurate our model is. We will get predictions, the errors, and the Mean Absolute Error.
-
-```{r}
-# Get predictions
-lr_pred1 = predict(lr_mod1, newdata = testing)
-rf_pred = predict(rf_mod, newdata = testing, type = "raw")
-# Get errors
-lr_err1 = testing$overall_pick - lr_pred1
-rf_err = testingt$overall_pick - rf_pred
-# Get MAE - Mean Absolute Error
-lr_mae1 = mean(abs(lr_err1))
-rf_mae = mean(abs(rf_err))
-```
-
-#### Regression and Random Forest Models:
-
-```{r}
-paste("Linear Regression 1 MAE: ", round(lr_mae1, 2))
-paste("Linear Regression 2 MAE: ", round(lr_mae2, 2))
-paste("Random Forest MAE:       ", round(rf_mae, 2))
-```
+#### 
 
 #### Feature Importance:
 
