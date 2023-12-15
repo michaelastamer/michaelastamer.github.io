@@ -1,0 +1,254 @@
+---
+title: "Final Project MichaelaStamer"
+format: html
+editor: visual
+---
+
+# Question
+
+1.  Business Understanding- What does the business need?
+
+The NBA is searching for a way to determine 'underdogs' and what I would call 'under achievers'. There are some players that did not get picked very high in the draft, such as first round. However, they ended up having amazing careers- played tons of minutes, won many games, scored a ton of points. On the other hand, there are some players on the opposite spectrum of that scenario. They were picked very high in the draft, but did not live up to expectations in their NBA career.
+
+I want to make a predictive model to show, based on a players NBA career, what would we expect them to be drafted? We can then compare to some popular, successful players such as LeBron James to see how successful they were in comparison to others and to their draft pick. What would be expect someone to be drafted based on how they perform in the NBA, and what were they actually drafted? How was an 'underdog'? Who didn't live up to expectations?
+
+2.  Data Understanding- What data do we have/ need? Is it clean?
+
+We have data from the NBA Draft from 1989- 2021. It is pretty organized, but may be some missing values to get rid of.
+
+We have the draft pick each player was picked at. We also have NBA career statistics to test it against such as years played, average points, average minutes, etc.
+
+3.  Data Preparation- How do we organize the data for modeling?
+
+I will need to dive into summaries and look into some averages to be able to determine 'good' stats and 'bad' stats in order to determine a successful career. For example, I can look at average minutes played, and anything over that would be considered 'good', and I would consider to be part of a successful career. Of course, there is a little bit of understanding of basketball needed in order to do this. One must understand basic 'good' and 'bad' aspects of basketball. Playing more minutes, more assists, more points, etc are things that make a good player successful.
+
+4.  Modeling- What modeling techniques should we apply?
+
+I will first start by creating a decision tree model to predict the overall pick of these NBA players. I will look into feature importance. I want to see what features are important in deciding a draft pick. I can also look into single players and individual cases to see how my model predicted their draft, and what they were actually drafted at the time.
+
+5.  Evaluation- What model best meets the business objectives?
+
+I believe the decision tree predictive model will work best to get the outcome we want, and to reach our goal. This would be best for stakeholders to understand the data, and use it to their benefit.
+
+6.  Deployment- How do stakeholders access the results?
+
+Stakeholders for this problem are most likely basketball fans, and possibly people betting in fantasy leagues on their favorite players/ teams. The stakeholders would be able to access the results on my website gitHub.
+
+In the future, with more time and experience, I would create an app. Then stakeholders could download this app and easily look up their favorite players to see these 'underdogs' and maybe the opposite who didn't live up to expectations.
+
+# NBA Basketball Draft
+
+This data set contains all of the NBA Draft picks from 1989 to 2021. The data set consists of draft year, overall pick and player data.
+
+Some notable players during this time is LeBron James, Kobe Bryant, Derrick Rose, Dirk Nowitzki, Carmelo Anthony, Stephen Curry, Paul Pierce, Kevin Durant, Shaq, Vince Carter, and Allen Iverson.
+
+The data is from <https://www.basketball-reference.com/draft/>.
+
+I am using the data set to be able to understand based on an NBA player's career, what would be predict their pick in the draft was? We can compare what their draft pick should have been based on their success/ lack of success in the NBA, and where they were actually drafted. Essentially, we could be able to pick out some underdogs who were maybe not drafted very high, but ended up working really hard after college and had a great career. We could also in theory pick out the people that maybe had tons of potential and were drafted very high, very early, but didn't perform well in their career.
+
+We can look at the success of their career based on a number of variables such as `years_active`, `average_minutes_played`, `win_shares`, `points_per_game`, or `points`. There are a multitude of variables that factor into a players career success, so we want to include multiple and compare them to some of the best, well-known players in the league.
+
+# Analytics Tool
+
+I am looking into feature importance. This will tell me what key indicators are important in determining the draft pick order. Reversely it will also explain what variables are important to determine a successful career.
+
+```{r}
+rm(list = ls())
+```
+
+```{r}
+library(tidyverse)
+library(rmarkdown)
+library(rpart)
+library(rpart.plot)
+library(GGally)
+library(randomForest)
+library(caret)
+```
+
+## Read in Data
+
+```{r}
+draft = read_csv("nbaplayersdraft.csv")
+```
+
+We can see once we load in the data set, we have 1922 observations, rows, or instances. We have 24 different columns, or variables. There are 3 categorical- `team`, `player`, and `college`. There are also 21 numerical variables like `id`, `year`, `rank`, `games`, `overall_pick`, `points`, etc.
+
+```{r}
+summary(draft)
+```
+
+We can then create a summary of our data set. Looking at the median, minimum and other summary statistics don't make sense for some of these variables like `id`, `team`, or `player` for example. We can get interesting information about the averages within the draft by looking at these statistics. Some interesting ones are the average `overall_pick` is 29.69 for the NBA draft. There are also some missing values we will need to get rid of to clean up our data set.
+
+The variables following the player are for the NBA. For example, `years_active`, `games`, `minutes_played`, and `points` are for the player in the NBA, after they were drafted.
+
+From this summary- we can decide on individual stats, what would be considered as 'successful' and 'not'.
+
+-   Overall Pick- Average: 30
+
+We can understand the average overall pick, for this data set anyways, is 30. We know anything over(lower) than 30 would be above average draft pick- the top 30 prospects.
+
+-   Years Active- Average: 6.333
+
+-   Games- Average: 348
+
+-   Minutes Played- Average: 8399
+
+-   Points- Average: 3580
+
+-   Total Rebounds - Average: 1497
+
+-   Average Minutes Played- Average: 18.13
+
+-   Points per Game- Average: 7.27
+
+-   Win Shares - Average: 17.87
+
+We would assume, anything over these values are 'above average' and more successful than most.
+
+Convert data types. Certain text-based variables must be turned into factors in order for our decision tree model to work.
+
+```{r}
+# Make the character type variables into factors.
+draft = draft %>%
+  mutate_at(vars(team, college), .funs = factor)
+
+# Make sure variable names are valid
+colnames(draft) = make.names(colnames(draft))
+```
+
+```{r}
+pct_missing = function(x) {
+  sum(is.na(x)) / length(x)
+}
+a = data.frame("pct_missing" = sapply(draft, FUN = pct_missing)) %>%
+  arrange(desc(pct_missing))
+
+a
+```
+
+We will get rid of missing values to clean up the data. You will then see, the data set drops to 1309 observations instead of the initial 1922 observations. This helps our model run correctly, and not get thrown off by these missing variables. Some players may not have all the data for a multitude of reasons. One could be they maybe got hurt and didn't play so are missing some stats. For example, Michael Cutright who was drafted in the second round, 42nd overall pick, in 1989 never actually played in the NBA, so therefore has no stats because he did not continue that career.
+
+```{r}
+draft = draft %>%
+  drop_na()
+```
+
+A feature plot can show us the correlation between variables. I chose to look at the numeric variables here. Some make more sense to analyze than others.
+
+```{r}
+caret::featurePlot(keep(draft, is.numeric), draft$overall_pick, plot = "scatter")
+```
+
+For the random forest model, we then want to partition the data to use for testing and training our data set. I will use 70% of the data for training, then test it on 30% of the data set.
+
+```{r}
+set.seed(1922)
+sample_set = createDataPartition(draft$overall_pick,
+                                 p = 0.7,
+                                 list = FALSE)
+
+training = draft[sample_set, ]
+testing = draft[-sample_set, ]
+rm(sample_set)
+```
+
+Train the data.
+
+```{r}
+# You are training a decision tree here -- "rpart". 
+# You need a different method like, "rf" for random forest, and the
+# tuning parameters will change.
+train_ctrl = trainControl(method = "repeatedcv", number = 10, repeats = 20)
+tree = train(overall_pick ~ .,
+             data = select(training, -id, -year, -rank, -player),
+             method = "rpart",
+             trControl = train_ctrl,
+             tuneGrid = expand.grid(cp = seq(0.0, 0.1, 0.01)),
+             control = rpart.control(method = "anova", minsplit=1, minbucket=5))
+plot(tree)
+```
+
+```{r}
+lm1 = train(draft ~ .,
+            data = training,
+            method = "lm",
+            trControl = trainControl(method="cv", number = 10))
+lm1
+```
+
+```{r}
+summary(lm1)
+```
+
+We can then look into predictions, and test how accurate our model is. We will get predictions, the errors, and the Mean Absolute Error.
+
+```{r}
+# Get predictions
+lr_pred1 = predict(lr_mod1, newdata = testing)
+rf_pred = predict(rf_mod, newdata = testing, type = "raw")
+# Get errors
+lr_err1 = testing$overall_pick - lr_pred1
+rf_err = testingt$overall_pick - rf_pred
+# Get MAE - Mean Absolute Error
+lr_mae1 = mean(abs(lr_err1))
+rf_mae = mean(abs(rf_err))
+```
+
+#### Regression and Random Forest Models:
+
+```{r}
+paste("Linear Regression 1 MAE: ", round(lr_mae1, 2))
+paste("Linear Regression 2 MAE: ", round(lr_mae2, 2))
+paste("Random Forest MAE:       ", round(rf_mae, 2))
+```
+
+#### Feature Importance:
+
+I am looking into feature importance. This will tell me what key indicators are important in determining the draft pick order. Reversely it will also explain what variables are important to determine a successful career.
+
+```{r}
+library(iml)
+library(patchwork)
+lm_predictor = iml::Predictor$new(lm1, data = training)
+lm_imp = iml::FeatureImp$new(lm_predictor, loss = "rmse", compare = "ratio", n.repetitions = 30)
+plot(lm_imp)
+```
+
+```{r}
+lm_imp$results
+```
+
+```{r}
+tree_predictor = iml::Predictor$new(tree, data = training)
+tree_imp = iml::FeatureImp$new(tree_predictor, loss = "rmse", compare = "ratio", n.repetitions = 30)
+plot(tree_imp)
+```
+
+```{r}
+tree_imp$results
+```
+
+```{r}
+lm_pdp = iml::FeatureEffects$new(lm_predictor,
+                              features = c("minutes_played", "points", "years_active", "games"),
+                              method = "pdp+ice")
+plot(lm_pdp)
+```
+
+```{r}
+tree_pdp = iml::FeatureEffects$new(tree_predictor,
+                              features = c("minutes_played", "points", "years_active", "games"),
+                              method = "pdp+ice")
+plot(tree_pdp)
+```
+
+```{r}
+lm_interact = iml::Interaction$new(lm_predictor)
+plot(lm_interact)
+```
+
+```{r}
+tree_interact = iml::Interaction$new(tree_predictor)
+plot(tree_interact)
+```
